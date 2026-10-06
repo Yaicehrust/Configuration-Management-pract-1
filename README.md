@@ -2,19 +2,28 @@
 
 Практическая работа по «Конфигурационному управлению», вариант №1.
 
-## Этапы 1–3
+## Этап 4
 
-Проект содержит GUI, REPL, парсер с кавычками, параметры `--vfs` и
-`--script`, стартовые скрипты и загрузку VFS из CSV в память.
+Реализованы `ls`, `cd`, `du` и `cal`. Все операции с VFS выполняются
+над деревом в памяти.
 
-VFS хранится в виде дерева. Вложенность задаётся абсолютными путями,
-например `/home/user/file.txt`. Данные файлов представлены в Base64.
-Исходный CSV не изменяется при работе программы.
+Поддерживаемые варианты команд:
+
+```text
+ls
+ls PATH
+ls -l [PATH]
+cd [PATH]
+du [-s] [-h] [PATH]
+cal
+cal YEAR
+cal MONTH YEAR
+```
 
 ## Запуск
 
 ```text
-python -m src.main --vfs data/vfs/nested.csv --script scripts/stage3_nested.txt
+python -m src.main --vfs data/vfs/nested.csv --script scripts/stage4_start.txt
 ```
 
 ## Тесты

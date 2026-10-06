@@ -1,0 +1,13 @@
+# Stage 4 command tests
+ls
+ls -l
+cd home/user
+ls
+du
+du -h
+du -sh .
+cal
+cal 10 2026
+cd /missing
+cal 15 2026
+unknown
