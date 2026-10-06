@@ -33,9 +33,9 @@ class VfsNode:
 
 
 class Vfs:
-    """Store a virtual file tree entirely in memory."""
+    """Manage a virtual file tree entirely in memory."""
 
-    HEADER = ["path", "type", "size", "owner", "content_base64"]
+    header = ["path", "type", "size", "owner", "content_base64"]
 
     def __init__(self, name: str = "VFS") -> None:
         """Create an empty VFS with a root directory."""
@@ -44,7 +44,7 @@ class Vfs:
 
     @classmethod
     def from_csv(cls, path: str) -> "Vfs":
-        """Load a VFS from CSV without modifying the source file."""
+        """Load a VFS from a CSV file without modifying that file."""
         source = Path(path)
         if not source.is_file():
             raise VfsError(f"VFS-файл не найден: {path}")
@@ -61,8 +61,8 @@ class Vfs:
 
     @classmethod
     def _check_header(cls, fieldnames: list[str] | None) -> None:
-        """Validate the required CSV columns."""
-        if fieldnames != cls.HEADER:
+        """Validate required CSV columns."""
+        if fieldnames != cls.header:
             raise VfsError("Неверный формат CSV VFS.")
 
     def _load_rows(self, rows: list[dict[str, str | None]]) -> None:
@@ -73,34 +73,69 @@ class Vfs:
             self._insert(path, node_type, size, owner, data)
 
     @staticmethod
-    def _parse_row(row: dict[str, str | None]) -> tuple[
-        str, str, int, str, bytes
-    ]:
-        """Validate and decode one CSV row."""
-        path = row.get("path") or ""
-        node_type = row.get("type") or ""
-        size_text = row.get("size") or "0"
-        owner = row.get("owner") or "root"
-        content = row.get("content_base64") or ""
+    def _get_field(
+        row: dict[str, str | None], name: str, default: str
+    ) -> str:
+        """Return a CSV field or its default value."""
+        value = row.get(name)
+        return default if value is None else value
+
+    @staticmethod
+    def _row_values(
+        row: dict[str, str | None]
+    ) -> tuple[str, str, str, str, str]:
+        """Read and normalize CSV fields."""
+        return (
+            Vfs._get_field(row, "path", ""),
+            Vfs._get_field(row, "type", ""),
+            Vfs._get_field(row, "size", "0"),
+            Vfs._get_field(row, "owner", "root"),
+            Vfs._get_field(row, "content_base64", ""),
+        )
+
+    @staticmethod
+    def _validate_row(path: str, node_type: str, content: str) -> None:
+        """Validate path, node type and directory content."""
         if not path.startswith("/") or node_type not in {"dir", "file"}:
             raise VfsError("Некорректная строка VFS.")
+        if node_type == "dir" and content:
+            raise VfsError(f"Каталог содержит данные: {path}")
+
+    @staticmethod
+    def _parse_size(path: str, size_text: str) -> int:
+        """Convert and validate the file size."""
         try:
             size = int(size_text)
         except ValueError as exc:
             raise VfsError(f"Некорректный размер: {path}") from exc
         if size < MIN_SIZE:
             raise VfsError(f"Отрицательный размер: {path}")
-        if node_type == "dir" and content:
-            raise VfsError(f"Каталог содержит данные: {path}")
-        if node_type == "file":
-            try:
-                data = base64.b64decode(content, validate=True)
-            except (ValueError, binascii.Error) as exc:
-                raise VfsError(f"Некорректный base64: {path}") from exc
-            if size != len(data):
-                raise VfsError(f"Размер не совпадает: {path}")
-        else:
-            data = b""
+        return size
+
+    @staticmethod
+    def _decode_data(
+        path: str, node_type: str, content: str, size: int
+    ) -> bytes:
+        """Decode file content and verify its size."""
+        if node_type != "file":
+            return b""
+        try:
+            data = base64.b64decode(content, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise VfsError(f"Некорректный base64: {path}") from exc
+        if size != len(data):
+            raise VfsError(f"Размер не совпадает: {path}")
+        return data
+
+    @staticmethod
+    def _parse_row(row: dict[str, str | None]) -> tuple[
+        str, str, int, str, bytes
+    ]:
+        """Validate and decode one CSV row."""
+        path, node_type, size_text, owner, content = Vfs._row_values(row)
+        Vfs._validate_row(path, node_type, content)
+        size = Vfs._parse_size(path, size_text)
+        data = Vfs._decode_data(path, node_type, content, size)
         return path, node_type, size, owner, data
 
     def _insert(
@@ -136,7 +171,7 @@ class Vfs:
     def resolve(
         self, path: str, current: VfsNode | None = None
     ) -> VfsNode | None:
-        """Resolve a VFS path from a current node."""
+        """Resolve a VFS path from the current node."""
         start = self.root if path.startswith("/") else current or self.root
         parts = [part for part in path.split("/") if part]
         node = start
@@ -153,7 +188,7 @@ class Vfs:
 
     @staticmethod
     def path_of(node: VfsNode) -> str:
-        """Return an absolute VFS path."""
+        """Return the absolute path of a node."""
         if node.parent is None:
             return "/"
         parts: list[str] = []
@@ -164,13 +199,13 @@ class Vfs:
         return "/" + "/".join(reversed(parts))
 
     def total_size(self, node: VfsNode) -> int:
-        """Return recursive byte size."""
+        """Return the recursive byte size of a node."""
         if not node.is_dir:
             return node.size
         return sum(self.total_size(child) for child in node.children.values())
 
     def walk(self, node: VfsNode | None = None) -> list[VfsNode]:
-        """Return nodes below a VFS node."""
+        """Return nodes below a directory in depth-first order."""
         start = node or self.root
         result = [start]
         if start.is_dir:

@@ -15,7 +15,7 @@ class AppConfig:
 def parse_args(args: list[str] | None = None) -> AppConfig:
     """Parse supported command-line parameters."""
     parser = ArgumentParser(description="VFS shell emulator")
-    parser.add_argument("--vfs", help="path to VFS")
+    parser.add_argument("--vfs", help="path to VFS CSV file")
     parser.add_argument("--script", help="path to startup script")
     values = parser.parse_args(args)
     return AppConfig(values.vfs, values.script)

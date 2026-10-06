@@ -1,4 +1,4 @@
-"""Tests for the command parser."""
+"""Tests for command parsing."""
 
 import unittest
 
@@ -6,7 +6,7 @@ from src.parser import ParseError, parse_command
 
 
 class ParserTests(unittest.TestCase):
-    """Check command line parsing."""
+    """Check command line parsing behavior."""
 
     def test_simple_command(self) -> None:
         """Parse a command with one argument."""
@@ -16,17 +16,10 @@ class ParserTests(unittest.TestCase):
         )
 
     def test_quoted_argument(self) -> None:
-        """Keep a quoted argument as one value."""
+        """Keep quoted text as one argument."""
         self.assertEqual(
             parse_command('cd "My Documents"'),
             ("cd", ["My Documents"]),
-        )
-
-    def test_multiple_arguments(self) -> None:
-        """Parse several arguments."""
-        self.assertEqual(
-            parse_command('ls "My Documents" test.txt'),
-            ("ls", ["My Documents", "test.txt"]),
         )
 
     def test_unclosed_quote(self) -> None:

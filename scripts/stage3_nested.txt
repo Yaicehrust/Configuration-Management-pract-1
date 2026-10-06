@@ -1,6 +1,8 @@
-# Nested VFS with three levels
+# Three levels of directories and files
 ls
 cd home
 ls
 cd user
+ls -l
+cd projects/demo
 ls

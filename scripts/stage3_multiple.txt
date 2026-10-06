@@ -1,4 +1,6 @@
-# Multiple-file VFS
+# Several files
 ls
+ls -l
 cd docs
 ls
+cd ..

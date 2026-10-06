@@ -2,6 +2,6 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
-.pytest_cache/
-.vscode/
 .idea/
+.vscode/
+.pytest_cache/

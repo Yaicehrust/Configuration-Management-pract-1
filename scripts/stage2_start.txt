@@ -1,4 +1,4 @@
-# Stage 2 script
+# Stage 2: REPL and script execution
 ls
 cd "demo folder"
 unknown

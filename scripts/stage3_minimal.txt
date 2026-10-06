@@ -1,3 +1,5 @@
 # Minimal VFS
 ls
+ls -l
 cd /
+cd missing

@@ -3,23 +3,32 @@
 import calendar
 from datetime import date
 
+from .vfs import Vfs, VfsNode
+
 
 BYTES_PER_UNIT = 1024
 MIN_MONTH = 1
 MAX_MONTH = 12
 ONE_ARG = 1
 TWO_ARGS = 2
+MIN_SIZE = 0
 
 
 class CommandError(ValueError):
-    """Raised when command arguments are invalid."""
+    """Raised when command arguments or state are invalid."""
+
+
+def _require_count(args: list[str], expected: int, name: str) -> None:
+    """Check an exact number of arguments."""
+    if len(args) != expected:
+        raise CommandError(f"Использование: {name} требует {expected} арг.")
 
 
 def _split_option(args: list[str], option: str) -> tuple[bool, list[str]]:
-    """Extract one short option from arguments."""
+    """Extract one short option from command arguments."""
     enabled = option in args
-    remaining = [arg for arg in args if arg != option]
-    return enabled, remaining
+    rest = [arg for arg in args if arg != option]
+    return enabled, rest
 
 
 def format_size(value: int, human: bool) -> str:
@@ -28,21 +37,21 @@ def format_size(value: int, human: bool) -> str:
         return str(value)
     units = ["B", "K", "M", "G", "T"]
     number = float(value)
-    index = 0
+    unit_index = 0
     last_unit = len(units) - ONE_ARG
-    while number >= BYTES_PER_UNIT and index < last_unit:
+    while number >= BYTES_PER_UNIT and unit_index < last_unit:
         number /= BYTES_PER_UNIT
-        index += ONE_ARG
-    return f"{number:.1f}{units[index]}"
+        unit_index += ONE_ARG
+    return f"{number:.1f}{units[unit_index]}"
 
 
-def command_ls(vfs, current, args: list[str]) -> str:
-    """List files and directories in the selected path."""
+def command_ls(vfs: Vfs, current: VfsNode, args: list[str]) -> str:
+    """List files and directories."""
     long_format, remaining = _split_option(args, "-l")
     if len(remaining) > ONE_ARG:
         raise CommandError("Использование: ls [-l] [PATH]")
     target_path = remaining[0] if remaining else "."
-    target = vfs.resolve(target_path, current)
+    target = _resolve_path(vfs, current, target_path)
     if target is None:
         raise CommandError("Путь не найден.")
     if not target.is_dir:
@@ -54,33 +63,35 @@ def command_ls(vfs, current, args: list[str]) -> str:
     return "\n".join(sorted(lines))
 
 
-def _format_ls_node(node, long_format: bool) -> str:
+def _format_ls_node(node: VfsNode, long_format: bool) -> str:
     """Format one node for ls."""
     if not long_format:
         return node.name
-    kind = "d" if node.is_dir else "-"
-    return f"{kind} {node.size:>6} {node.owner:<12} {node.name}"
+    node_kind = "d" if node.is_dir else "-"
+    return f"{node_kind} {node.size:>6} {node.owner:<12} {node.name}"
 
 
-def command_cd(vfs, current, args: list[str]):
+def command_cd(
+    vfs: Vfs, current: VfsNode, args: list[str]
+) -> VfsNode:
     """Change the current virtual directory."""
     if len(args) > ONE_ARG:
         raise CommandError("Использование: cd [PATH]")
-    target_path = "." if not args else args[0]
-    target = vfs.resolve(target_path, current)
-    if target is None or not target.is_dir:
+    target = "/" if not args else args[0]
+    node = _resolve_path(vfs, current, target)
+    if node is None or not node.is_dir:
         raise CommandError("Каталог не найден.")
-    return target
+    return node
 
 
-def command_du(vfs, current, args: list[str]) -> str:
-    """Display recursive directory sizes."""
+def command_du(vfs: Vfs, current: VfsNode, args: list[str]) -> str:
+    """Display recursive sizes for the selected path."""
     summary, remaining = _split_option(args, "-s")
     human, remaining = _split_option(remaining, "-h")
     if len(remaining) > ONE_ARG:
         raise CommandError("Использование: du [-s] [-h] [PATH]")
     target_path = remaining[0] if remaining else "."
-    target = vfs.resolve(target_path, current)
+    target = _resolve_path(vfs, current, target_path)
     if target is None:
         raise CommandError("Путь не найден.")
     if summary or not target.is_dir:
@@ -90,7 +101,7 @@ def command_du(vfs, current, args: list[str]) -> str:
     return "\n".join(sorted(entries))
 
 
-def _format_du_entry(vfs, node, human: bool) -> str:
+def _format_du_entry(vfs: Vfs, node: VfsNode, human: bool) -> str:
     """Format one du result line."""
     size = format_size(vfs.total_size(node), human)
     return f"{size}\t{vfs.path_of(node)}"
@@ -102,7 +113,7 @@ def command_cal(args: list[str]) -> str:
         year, month = date.today().year, date.today().month
     elif len(args) == ONE_ARG:
         try:
-            year = int(args[0])
+            year, month = int(args[0]), 1
         except ValueError as exc:
             raise CommandError(
                 "Использование: cal [YEAR] или cal MONTH YEAR"
@@ -110,7 +121,7 @@ def command_cal(args: list[str]) -> str:
         return calendar.calendar(year)
     elif len(args) == TWO_ARGS:
         try:
-            month, year = int(args[0]), int(args[ONE_ARG])
+            month, year = int(args[0]), int(args[1])
         except ValueError as exc:
             raise CommandError("Месяц и год должны быть числами.") from exc
         if month < MIN_MONTH or month > MAX_MONTH:
@@ -118,3 +129,26 @@ def command_cal(args: list[str]) -> str:
     else:
         raise CommandError("Использование: cal [YEAR | MONTH YEAR]")
     return calendar.month(year, month)
+
+
+def command_chown(
+    vfs: Vfs, current: VfsNode, args: list[str]
+) -> str:
+    """Change the owner of a VFS node in memory."""
+    recursive, remaining = _split_option(args, "-R")
+    _require_count(remaining, 2, "chown")
+    owner, path = remaining
+    if not owner or "/" in owner:
+        raise CommandError("Некорректный владелец.")
+    node = _resolve_path(vfs, current, path)
+    if node is None:
+        raise CommandError("Путь не найден.")
+    nodes = vfs.walk(node) if recursive else [node]
+    for item in nodes:
+        item.owner = owner
+    return f"Владелец изменён: {vfs.path_of(node)} -> {owner}"
+
+
+def _resolve_path(vfs: Vfs, current: VfsNode, path: str) -> VfsNode | None:
+    """Resolve a path relative to the current VFS directory."""
+    return vfs.resolve(path, current)

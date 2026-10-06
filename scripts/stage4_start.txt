@@ -1,11 +1,11 @@
-# Stage 4 command tests
+# Main commands and errors
 ls
 ls -l
 cd home/user
 ls
 du
 du -h
-du -sh .
+du -s -h .
 cal
 cal 10 2026
 cd /missing

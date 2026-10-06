@@ -1,0 +1,15 @@
+# All commands from stages 1-5
+ls
+cd home/user
+ls
+du -s -h .
+cal 10 2026
+chown admin /home/user/readme.txt
+ls -l /home/user/readme.txt
+vfs-load data/vfs/minimal.csv
+ls
+vfs-load data/vfs/missing.csv
+vfs-load data/vfs/invalid.csv
+cd /
+unknown
+exit
