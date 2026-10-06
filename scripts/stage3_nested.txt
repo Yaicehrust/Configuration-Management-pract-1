@@ -1,0 +1,6 @@
+# Nested VFS with three levels
+ls
+cd home
+ls
+cd user
+ls

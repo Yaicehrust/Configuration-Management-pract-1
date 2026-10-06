@@ -1,0 +1,9 @@
+path,type,size,owner,content_base64
+/,dir,0,root,
+/home,dir,0,root,
+/home/user,dir,0,student,
+/home/user/readme.txt,file,20,student,TmVzdGVkIFZGUyBleGFtcGxlLgo=
+/home/user/projects,dir,0,student,
+/home/user/projects/demo,dir,0,student,
+/home/user/projects/demo/main.py,file,15,student,cHJpbnQoImhlbGxvIikK
+/home/user/projects/demo/data.txt,file,12,student,ZXhhbXBsZSBkYXRh

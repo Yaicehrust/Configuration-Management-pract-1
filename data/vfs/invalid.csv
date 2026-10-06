@@ -1,0 +1,3 @@
+path,type,size,owner,content_base64
+/,dir,0,root,
+/broken.bin,file,2,root,not-base64

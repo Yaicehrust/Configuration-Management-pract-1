@@ -1,0 +1,4 @@
+# Multiple-file VFS
+ls
+cd docs
+ls
