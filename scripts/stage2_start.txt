@@ -1,0 +1,6 @@
+# Stage 2 script
+ls
+cd "demo folder"
+unknown
+cd one two
+exit
