@@ -7,11 +7,15 @@ from .commands import (
     CommandError,
     command_cal,
     command_cd,
+    command_chown,
     command_du,
     command_ls,
 )
 from .parser import ParseError, parse_command
-from .vfs import Vfs, VfsNode
+from .vfs import Vfs, VfsError, VfsNode
+
+
+ONE_ARG = 1
 
 
 @dataclass(frozen=True)
@@ -24,17 +28,18 @@ class CommandResult:
 
 
 class Shell:
-    """Execute commands against an in-memory VFS."""
+    """Execute supported commands against an in-memory VFS."""
 
     def __init__(self, vfs: Vfs | None = None) -> None:
-        """Create a shell with the supplied VFS."""
+        """Create a shell with an optional VFS."""
         self.vfs = vfs or Vfs()
         self.current = self.vfs.root
-        self.commands: dict[str, Callable[[list[str]], str | VfsNode]] = {
+        self.commands: dict[str, Callable[[list[str]], str]] = {
             "ls": self._ls,
             "cd": self._cd,
             "du": self._du,
             "cal": self._cal,
+            "chown": self._chown,
         }
 
     def execute_line(self, line: str) -> CommandResult:
@@ -47,25 +52,24 @@ class Shell:
             return CommandResult()
         if command == "exit":
             return self._exit(args)
+        if command == "vfs-load":
+            return self._vfs_load(args)
         handler = self.commands.get(command)
         if handler is None:
             return CommandResult(f"Ошибка: неизвестная команда '{command}'.")
         try:
-            value = handler(args)
+            return CommandResult(handler(args))
         except CommandError as exc:
             return CommandResult(f"Ошибка: {exc}")
-        if isinstance(value, VfsNode):
-            self.current = value
-            return CommandResult()
-        return CommandResult(value)
 
     def _ls(self, args: list[str]) -> str:
         """Execute ls."""
         return command_ls(self.vfs, self.current, args)
 
-    def _cd(self, args: list[str]) -> VfsNode:
-        """Execute cd and return the new current directory."""
-        return command_cd(self.vfs, self.current, args)
+    def _cd(self, args: list[str]) -> str:
+        """Execute cd and update the current directory."""
+        self.current = command_cd(self.vfs, self.current, args)
+        return ""
 
     def _du(self, args: list[str]) -> str:
         """Execute du."""
@@ -75,9 +79,28 @@ class Shell:
         """Execute cal."""
         return command_cal(args)
 
+    def _chown(self, args: list[str]) -> str:
+        """Execute chown."""
+        return command_chown(self.vfs, self.current, args)
+
     @staticmethod
     def _exit(args: list[str]) -> CommandResult:
-        """Exit when no arguments are provided."""
+        """Terminate the shell when exit has no arguments."""
         if args:
             return CommandResult("Ошибка: exit не принимает аргументы.")
         return CommandResult(should_exit=True)
+
+    def _vfs_load(self, args: list[str]) -> CommandResult:
+        """Load another VFS from disk into memory."""
+        if len(args) != ONE_ARG:
+            return CommandResult("Ошибка: Использование: vfs-load PATH")
+        try:
+            new_vfs = Vfs.from_csv(args[0])
+        except VfsError as exc:
+            return CommandResult(f"Ошибка: {exc}")
+        self.vfs = new_vfs
+        self.current = new_vfs.root
+        return CommandResult(
+            f"VFS загружена: {new_vfs.name}",
+            vfs_changed=True,
+        )

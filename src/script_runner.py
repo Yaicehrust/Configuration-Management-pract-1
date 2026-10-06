@@ -17,7 +17,7 @@ def run_script(
     execute: Callable[[str], tuple[str, bool]],
     write: Callable[[str], None],
 ) -> None:
-    """Run commands and display input and output."""
+    """Run script lines and display both input and output."""
     for line in load_script(path):
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):

@@ -5,8 +5,9 @@ from .config import parse_args
 
 
 def main() -> None:
-    """Parse arguments and launch the GUI."""
-    run_app(parse_args())
+    """Parse startup parameters and launch the GUI."""
+    config = parse_args()
+    run_app(config)
 
 
 if __name__ == "__main__":

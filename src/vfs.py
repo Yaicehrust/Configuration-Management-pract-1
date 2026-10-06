@@ -33,7 +33,7 @@ class VfsNode:
 
 
 class Vfs:
-    """Store a virtual file tree entirely in memory."""
+    """Manage a virtual file tree entirely in memory."""
 
     HEADER = ["path", "type", "size", "owner", "content_base64"]
 
@@ -44,7 +44,7 @@ class Vfs:
 
     @classmethod
     def from_csv(cls, path: str) -> "Vfs":
-        """Load a VFS from CSV without modifying the source file."""
+        """Load a VFS from a CSV file without modifying that file."""
         source = Path(path)
         if not source.is_file():
             raise VfsError(f"VFS-файл не найден: {path}")
@@ -61,7 +61,7 @@ class Vfs:
 
     @classmethod
     def _check_header(cls, fieldnames: list[str] | None) -> None:
-        """Validate the required CSV columns."""
+        """Validate required CSV columns."""
         if fieldnames != cls.HEADER:
             raise VfsError("Неверный формат CSV VFS.")
 
@@ -136,7 +136,7 @@ class Vfs:
     def resolve(
         self, path: str, current: VfsNode | None = None
     ) -> VfsNode | None:
-        """Resolve a VFS path from a current node."""
+        """Resolve a VFS path from the current node."""
         start = self.root if path.startswith("/") else current or self.root
         parts = [part for part in path.split("/") if part]
         node = start
@@ -153,7 +153,7 @@ class Vfs:
 
     @staticmethod
     def path_of(node: VfsNode) -> str:
-        """Return an absolute VFS path."""
+        """Return the absolute path of a node."""
         if node.parent is None:
             return "/"
         parts: list[str] = []
@@ -164,13 +164,13 @@ class Vfs:
         return "/" + "/".join(reversed(parts))
 
     def total_size(self, node: VfsNode) -> int:
-        """Return recursive byte size."""
+        """Return the recursive byte size of a node."""
         if not node.is_dir:
             return node.size
         return sum(self.total_size(child) for child in node.children.values())
 
     def walk(self, node: VfsNode | None = None) -> list[VfsNode]:
-        """Return nodes below a VFS node."""
+        """Return nodes below a directory in depth-first order."""
         start = node or self.root
         result = [start]
         if start.is_dir:

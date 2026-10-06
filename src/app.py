@@ -39,7 +39,7 @@ class EmulatorGUI:
         )
 
     def _load_initial_vfs(self) -> None:
-        """Load the configured VFS into memory."""
+        """Load the configured startup VFS, when present."""
         if not self.config.vfs_path:
             return
         try:
@@ -64,8 +64,10 @@ class EmulatorGUI:
             self._write(f"Ошибка запуска скрипта: {exc}")
 
     def _execute_for_script(self, line: str) -> tuple[str, bool]:
-        """Execute one script command."""
+        """Execute one script command and update the GUI state."""
         result = self.shell.execute_line(line)
+        if result.vfs_changed:
+            self._update_title()
         return result.output, result.should_exit
 
     def _submit(self, _event: tk.Event) -> None:
@@ -78,11 +80,13 @@ class EmulatorGUI:
         result = self.shell.execute_line(line)
         if result.output:
             self._write(result.output)
+        if result.vfs_changed:
+            self._update_title()
         if result.should_exit:
             self.root.destroy()
 
     def _update_title(self) -> None:
-        """Put the VFS name into the window title."""
+        """Update the window title with the current VFS name."""
         self.root.title(f"VFS - {self.shell.vfs.name}")
 
     def _write(self, text: str) -> None:
@@ -94,7 +98,7 @@ class EmulatorGUI:
 
 
 def run_app(config: AppConfig) -> None:
-    """Start the Tk application."""
+    """Create the main window and start the Tk event loop."""
     root = tk.Tk()
     app = EmulatorGUI(root, config)
     if config.script_path:
