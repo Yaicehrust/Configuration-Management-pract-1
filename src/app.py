@@ -5,6 +5,7 @@ import tkinter as tk
 from .config import AppConfig
 from .script_runner import run_script
 from .shell import Shell
+from .vfs import Vfs, VfsError
 
 
 class EmulatorGUI:
@@ -19,6 +20,7 @@ class EmulatorGUI:
         self.root.geometry("760x500")
         self._build_widgets()
         self._print_config()
+        self._load_initial_vfs()
 
     def _build_widgets(self) -> None:
         """Create output and input widgets."""
@@ -35,6 +37,18 @@ class EmulatorGUI:
         self._write(
             f"Script path: {self.config.script_path or '<не задан>'}"
         )
+
+    def _load_initial_vfs(self) -> None:
+        """Load the configured VFS into memory."""
+        if not self.config.vfs_path:
+            return
+        try:
+            self.shell.vfs = Vfs.from_csv(self.config.vfs_path)
+            self.shell.current = self.shell.vfs.root
+            self._update_title()
+            self._write(f"VFS загружена: {self.shell.vfs.name}")
+        except VfsError as exc:
+            self._write(f"Ошибка: {exc}")
 
     def start_script(self) -> None:
         """Execute the configured startup script."""
@@ -66,6 +80,10 @@ class EmulatorGUI:
             self._write(result.output)
         if result.should_exit:
             self.root.destroy()
+
+    def _update_title(self) -> None:
+        """Put the VFS name into the window title."""
+        self.root.title(f"VFS - {self.shell.vfs.name}")
 
     def _write(self, text: str) -> None:
         """Append text to the output area."""

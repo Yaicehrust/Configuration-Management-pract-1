@@ -1,0 +1,6 @@
+path,type,size,owner,content_base64
+/,dir,0,root,
+/docs,dir,0,student,
+/docs/report.txt,file,15,student,Q291cnNlIHJlcG9ydC4K
+/docs/plan.txt,file,14,student,UHJvamVjdCBwbGFuLgo=
+/image.bin,file,6,student,AAEC+vv/
