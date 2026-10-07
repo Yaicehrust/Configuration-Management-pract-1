@@ -137,6 +137,7 @@ class Vfs:
         size = Vfs._parse_size(path, size_text)
         data = Vfs._decode_data(path, node_type, content, size)
         return path, node_type, size, owner, data
+
     def _insert(
         self,
         path: str,
