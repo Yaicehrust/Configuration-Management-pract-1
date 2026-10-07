@@ -239,5 +239,5 @@ feat(repl): implement stage 1
 feat(config): implement stage 2
 feat(vfs): implement stage 3
 feat(commands): implement stage 4
-feat(vfs): implement stage 5 commands
+feat(vfs): implement stage 5 
 ```
