@@ -73,36 +73,70 @@ class Vfs:
             self._insert(path, node_type, size, owner, data)
 
     @staticmethod
-    def _parse_row(row: dict[str, str | None]) -> tuple[
-        str, str, int, str, bytes
-    ]:
-        """Validate and decode one CSV row."""
-        path = row.get("path") or ""
-        node_type = row.get("type") or ""
-        size_text = row.get("size") or "0"
-        owner = row.get("owner") or "root"
-        content = row.get("content_base64") or ""
+    def _get_field(
+        row: dict[str, str | None], name: str, default: str
+    ) -> str:
+        """Return a CSV field or its default value."""
+        value = row.get(name)
+        return default if value is None else value
+
+    @staticmethod
+    def _row_values(
+        row: dict[str, str | None]
+    ) -> tuple[str, str, str, str, str]:
+        """Read and normalize CSV fields."""
+        return (
+            Vfs._get_field(row, "path", ""),
+            Vfs._get_field(row, "type", ""),
+            Vfs._get_field(row, "size", "0"),
+            Vfs._get_field(row, "owner", "root"),
+            Vfs._get_field(row, "content_base64", ""),
+        )
+
+    @staticmethod
+    def _validate_row(path: str, node_type: str, content: str) -> None:
+        """Validate path, node type and directory content."""
         if not path.startswith("/") or node_type not in {"dir", "file"}:
             raise VfsError("Некорректная строка VFS.")
+        if node_type == "dir" and content:
+            raise VfsError(f"Каталог содержит данные: {path}")
+
+    @staticmethod
+    def _parse_size(path: str, size_text: str) -> int:
+        """Convert and validate the file size."""
         try:
             size = int(size_text)
         except ValueError as exc:
             raise VfsError(f"Некорректный размер: {path}") from exc
         if size < MIN_SIZE:
             raise VfsError(f"Отрицательный размер: {path}")
-        if node_type == "dir" and content:
-            raise VfsError(f"Каталог содержит данные: {path}")
-        if node_type == "file":
-            try:
-                data = base64.b64decode(content, validate=True)
-            except (ValueError, binascii.Error) as exc:
-                raise VfsError(f"Некорректный base64: {path}") from exc
-            if size != len(data):
-                raise VfsError(f"Размер не совпадает: {path}")
-        else:
-            data = b""
-        return path, node_type, size, owner, data
+        return size
 
+    @staticmethod
+    def _decode_data(
+        path: str, node_type: str, content: str, size: int
+    ) -> bytes:
+        """Decode file content and verify its size."""
+        if node_type != "file":
+            return b""
+        try:
+            data = base64.b64decode(content, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise VfsError(f"Некорректный base64: {path}") from exc
+        if size != len(data):
+            raise VfsError(f"Размер не совпадает: {path}")
+        return data
+
+    @staticmethod
+    def _parse_row(row: dict[str, str | None]) -> tuple[
+        str, str, int, str, bytes
+    ]:
+        """Validate and decode one CSV row."""
+        path, node_type, size_text, owner, content = Vfs._row_values(row)
+        Vfs._validate_row(path, node_type, content)
+        size = Vfs._parse_size(path, size_text)
+        data = Vfs._decode_data(path, node_type, content, size)
+        return path, node_type, size, owner, data
     def _insert(
         self,
         path: str,
