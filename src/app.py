@@ -18,18 +18,67 @@ class EmulatorGUI:
         self.shell = Shell()
         self.root.title("VFS")
         self.root.geometry("760x500")
+        self.root.minsize(600, 400)
         self._build_widgets()
         self._print_config()
         self._load_initial_vfs()
 
     def _build_widgets(self) -> None:
-        """Create output and input widgets."""
-        self.output = tk.Text(self.root, state="disabled", wrap="word")
-        self.output.pack(fill="both", expand=True, padx=10, pady=(10, 5))
-        self.entry = tk.Entry(self.root)
-        self.entry.pack(fill="x", padx=10, pady=(5, 10))
-        self.entry.bind("<Return>", self._submit)
-        self.entry.focus_set()
+    """Create output and input widgets."""
+    self.root.configure(bg="#111111")
+
+    terminal_frame = tk.Frame(self.root, bg="#111111")
+    terminal_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+    self.output = tk.Text(
+        terminal_frame,
+        state="disabled",
+        wrap="word",
+        bg="#111111",
+        fg="#e6e6e6",
+        insertbackground="#e6e6e6",
+        selectbackground="#333333",
+        font=("Consolas", 11),
+        relief="flat",
+        borderwidth=0,
+    )
+    self.output.pack(side="left", fill="both", expand=True)
+
+    scrollbar = tk.Scrollbar(
+        terminal_frame,
+        command=self.output.yview,
+        bg="#222222",
+        troughcolor="#111111",
+        activebackground="#444444",
+    )
+    scrollbar.pack(side="right", fill="y")
+    self.output.configure(yscrollcommand=scrollbar.set)
+
+    input_frame = tk.Frame(self.root, bg="#111111")
+    input_frame.pack(fill="x", padx=10, pady=(0, 10))
+
+    prompt = tk.Label(
+        input_frame,
+        text=">",
+        bg="#111111",
+        fg="#e6e6e6",
+        font=("Consolas", 11),
+    )
+    prompt.pack(side="left", padx=(4, 8))
+
+    self.entry = tk.Entry(
+        input_frame,
+        bg="#1b1b1b",
+        fg="#e6e6e6",
+        insertbackground="#e6e6e6",
+        selectbackground="#333333",
+        selectforeground="#ffffff",
+        font=("Consolas", 11),
+        relief="flat",
+    )
+    self.entry.pack(side="left", fill="x", expand=True, ipady=6)
+    self.entry.bind("<Return>", self._submit)
+    self.entry.focus_set()
 
     def _print_config(self) -> None:
         """Display configured startup parameters."""
